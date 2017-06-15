@@ -58,7 +58,7 @@ class SQLADatabase(Database):
 
     # Name of your Database subclass, this is used in configuration
     # to refer to your class
-    type = "sql_alchemy"
+    type = "sqlalchemy"
 
     # fields
     FIELD_FINGERPRINTED = "fingerprinted"
