@@ -63,12 +63,25 @@ class SQLADatabase(Database):
     # fields
     FIELD_FINGERPRINTED = "fingerprinted"
 
-    #Engine = create_engine("sqlite:///:memory:", echo=True)
-    Engine = create_engine('sqlite:///dejavu.db', echo=False)
-    Session = sessionmaker(bind=Engine)
+    Engine = None
+    Session = None
 
-    def __init__(self):
+    def __init__(self, **options):
         super(SQLADatabase, self).__init__()
+        connection_string = ""
+        if options.has_key('connection_string') and options['connection_string'] != "":
+            connection_string = options['connection_string']
+        else:
+            # driver, username, password, host, path
+            connection_string = "{}://".format(options['driver'])
+            if options.has_key('user') and options['user'] != "":
+                connection_string += "{}:{}".format(options['user'],options['passwd'])
+            if options.has_key('host') and options['host'] != "":
+                connection_string += "@{}".format(options['host'])
+            if options.has_key('db') and options['db'] != "":
+                connection_string += "/{}".format(options['db'])
+        self.Engine = create_engine(connection_string)
+        self.Session = sessionmaker(bind=self.Engine)
 
     @staticmethod
     def _song_to_dict(song):
