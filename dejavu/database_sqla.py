@@ -22,25 +22,25 @@ class Song(Base):
 
     UniqueConstraint(name, _file_sha1, name="unique_constraint")
 
+    fingerprints = relationship("Fingerprint", backref="song", cascade="all,delete-orphan", passive_deletes=True)
+
     @property
     def file_sha1(self):
         return self._file_sha1.encode("hex")
 
     @file_sha1.setter
     def file_sha1(self, file_sha1):
-        self._file_sha1 = file_sha1.encode("hex")
+        self._file_sha1 = file_sha1.decode("hex")
 
 class Fingerprint(Base):
     __tablename__ = "fingerprints"
 
     _hash = Column(LargeBinary(10), name=Database.FIELD_HASH, index=True, nullable=False)
-    song_id = Column(Integer, ForeignKey(Song.id), name=Database.FIELD_SONG_ID)
+    song_id = Column(Integer, ForeignKey(Song.id,ondelete="CASCADE"), name=Database.FIELD_SONG_ID)
     song_offset = Column(Integer, name=Database.FIELD_OFFSET)
 
     PrimaryKeyConstraint(_hash, song_id, song_offset, name="pk_constraint")
     UniqueConstraint(_hash, song_id, song_offset, name="unique_constraint")
-
-    song = relationship(Song, backref=backref('fingerprints',lazy='dynamic'))
 
     @property
     def hash(self):
@@ -89,7 +89,12 @@ class SQLADatabase(Database):
 
         If the song was not found, this method returns None.
         """
-        return {Database.FIELD_SONG_ID: song.id, Database.FIELD_SONGNAME: song.name, Database.FIELD_FILE_SHA1: song.file_sha1} if song is not None else None
+        return {
+            SQLADatabase.FIELD_SONG_ID: song.id,
+            SQLADatabase.FIELD_SONGNAME: song.name,
+            SQLADatabase.FIELD_FINGERPRINTED: 1 if song.fingerprinted is True else 0,
+            SQLADatabase.FIELD_FILE_SHA1: song.file_sha1.upper()
+        } if song is not None else None
 
     @staticmethod
     def _grouper(iterable, n, fillvalue=None):
@@ -102,6 +107,7 @@ class SQLADatabase(Database):
         Creates any non-existing tables required for dejavu to function.
         """
         Base.metadata.create_all(self.Engine)
+        self.delete_unfingerprinted_songs()
 
     def empty(self):
         """
@@ -117,16 +123,16 @@ class SQLADatabase(Database):
         associated with them.
         """
         session = self.Session()
-        for song in session.query(Song).filter_by(fingerprinted=False).all():
-            session.delete(song)
-        session.commit()
+        session.query(Song).filter_by(fingerprinted=False).delete(synchronize_session=False)
+        session.expire_all()
+        session.close()
 
     def get_num_songs(self):
         """
         Returns the amount of songs in the database.
         """
         session = self.Session()
-        count = session.query(Song).count()
+        count = session.query(Song).filter_by(fingerprinted=True).count()
         session.close()
         return count
 
@@ -160,7 +166,8 @@ class SQLADatabase(Database):
         session = self.Session()
         songs = session.query(Song).filter_by(fingerprinted=True).all()
         session.close()
-        return [self._song_to_dict(s) for s in songs]
+        for s in songs:
+            yield self._song_to_dict(s)
 
     def get_song_by_id(self, sid):
         """
