@@ -72,7 +72,6 @@ class SQLADatabase(Database):
         if options.has_key('connection_string') and options['connection_string'] != "":
             connection_string = options['connection_string']
         else:
-            # driver, username, password, host, path
             connection_string = "{}://".format(options['driver'])
             if options.has_key('user') and options['user'] != "":
                 connection_string += "{}:{}".format(options['user'],options['passwd'])
