@@ -173,4 +173,12 @@ def get_database(database_type=None):
 
 
 # Import our default database handler
-import dejavu.database_sql, dejavu.database_sql
+try:
+    import dejavu.database_sql
+except ImportError:
+    print "MySQL backend unavailable"
+
+try:
+    import dejavu.database_sqla
+except ImportError:
+    print "SQLAlchemy backend unavailable"
