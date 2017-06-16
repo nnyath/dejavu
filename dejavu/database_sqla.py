@@ -5,7 +5,7 @@ from itertools import izip_longest
 
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship, synonym
-from sqlalchemy import create_engine, Column, LargeBinary, Integer, Text, Boolean, ForeignKey
+from sqlalchemy import create_engine, Column, LargeBinary, Integer, BigInteger, Text, Boolean, ForeignKey
 from sqlalchemy.schema import UniqueConstraint, PrimaryKeyConstraint
 
 from dejavu.database import Database
@@ -35,7 +35,7 @@ class Song(Base):
 class Fingerprint(Base):
     __tablename__ = "fingerprints"
 
-    _hash = Column(LargeBinary(10), name=Database.FIELD_HASH, index=True, nullable=False)
+    _hash = Column(LargeBinary(8), name=Database.FIELD_HASH, index=True, nullable=False)
     song_id = Column(Integer, ForeignKey(Song.id,ondelete="CASCADE"), name=Database.FIELD_SONG_ID, nullable=False)
     song_offset = Column(Integer, name=Database.FIELD_OFFSET, nullable=False)
 
