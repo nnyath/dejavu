@@ -4,7 +4,7 @@ import logging
 from itertools import izip_longest
 
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker, relationship, backref, synonym
+from sqlalchemy.orm import sessionmaker, relationship, synonym
 from sqlalchemy import create_engine, Column, LargeBinary, Integer, Text, Boolean, ForeignKey
 from sqlalchemy.schema import UniqueConstraint, PrimaryKeyConstraint
 
@@ -22,7 +22,7 @@ class Song(Base):
 
     UniqueConstraint(name, _file_sha1, name="unique_constraint")
 
-    fingerprints = relationship("Fingerprint", backref="song", cascade="all,delete-orphan", passive_deletes=True)
+    fingerprints = relationship("Fingerprint", backref="song", cascade="all,delete,delete-orphan", passive_deletes=True)
 
     @property
     def file_sha1(self):
@@ -36,8 +36,8 @@ class Fingerprint(Base):
     __tablename__ = "fingerprints"
 
     _hash = Column(LargeBinary(10), name=Database.FIELD_HASH, index=True, nullable=False)
-    song_id = Column(Integer, ForeignKey(Song.id,ondelete="CASCADE"), name=Database.FIELD_SONG_ID)
-    song_offset = Column(Integer, name=Database.FIELD_OFFSET)
+    song_id = Column(Integer, ForeignKey(Song.id,ondelete="CASCADE"), name=Database.FIELD_SONG_ID, nullable=False)
+    song_offset = Column(Integer, name=Database.FIELD_OFFSET, nullable=False)
 
     PrimaryKeyConstraint(_hash, song_id, song_offset, name="pk_constraint")
     UniqueConstraint(_hash, song_id, song_offset, name="unique_constraint")
@@ -124,6 +124,7 @@ class SQLADatabase(Database):
         """
         session = self.Session()
         session.query(Song).filter_by(fingerprinted=False).delete(synchronize_session=False)
+        session.commit()
         session.expire_all()
         session.close()
 
@@ -270,4 +271,3 @@ class SQLADatabase(Database):
         session.close()
         for f in fingerprints:
             yield (f.song_id, f.song_offset-mapper[f._hash])
-
