@@ -181,4 +181,9 @@ except ImportError:
 try:
     import dejavu.database_sqla
 except ImportError:
-    print "SQLAlchemy backend unavailable"
+    print "SQLAlchemy ORM backend unavailable"
+
+try:
+    import dejavu.database_sqlac
+except ImportError:
+    print "SQLAlchemy Core backend unavailable"
