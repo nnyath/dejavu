@@ -137,7 +137,6 @@ class SQLACDatabase(Database):
         """
         s = self.songs.select().where(self.songs.c[SQLACDatabase.FIELD_FINGERPRINTED] == True)
         with self.Engine.connect() as c:
-            r = c.execute(s)
             l = [dict(zip(r.keys(), r)) for r in c.execute(s).fetchall()]
             for r in l:
                 yield r
@@ -151,8 +150,7 @@ class SQLACDatabase(Database):
         s = select([self.songs]).where(self.songs.c[SQLACDatabase.FIELD_SONG_ID] == sid)
         with self.Engine.connect() as c:
             r = c.execute(s)
-            r = dict(zip(r.keys(), r.fetchone()))
-            return r
+            return dict(zip(r.keys(), r.fetchone()))
 
     def insert(self, hash, sid, offset):
         """
@@ -175,8 +173,7 @@ class SQLACDatabase(Database):
         """
         i = self.songs.insert().values(**{SQLACDatabase.FIELD_SONGNAME: song_name})
         with self.Engine.connect() as c:
-            r = c.execute(i).inserted_primary_key[0]
-            return r
+            return c.execute(i).inserted_primary_key[0]
 
     def query(self, hash):
         """
