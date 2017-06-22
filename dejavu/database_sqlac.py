@@ -26,7 +26,7 @@ class SQLACDatabase(Database):
         """
         @staticmethod
         def _hextobin(val):
-            return val.decode("hex")
+            return bytearray(val.decode("hex"))
 
         @staticmethod
         def _bintohex(val):
@@ -164,14 +164,14 @@ class SQLACDatabase(Database):
         with self.Engine.connect() as c:
             c.execute(i)
 
-    def insert_song(self, song_name):
+    def insert_song(self, song_name, file_hash):
         """
         Inserts a song name into the database, returns the new
         identifier of the song.
 
         song_name: The name of the song.
         """
-        i = self.songs.insert().values(**{SQLACDatabase.FIELD_SONGNAME: song_name})
+        i = self.songs.insert().values(**{SQLACDatabase.FIELD_SONGNAME: song_name, Database.FIELD_FILE_SHA1: file_hash})
         with self.Engine.connect() as c:
             return c.execute(i).inserted_primary_key[0]
 

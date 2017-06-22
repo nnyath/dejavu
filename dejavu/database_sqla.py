@@ -195,7 +195,7 @@ class SQLADatabase(Database):
         session.commit()
         session.close()
 
-    def insert_song(self, song_name, sha1_hash):
+    def insert_song(self, song_name, file_hash):
         """
         Inserts a song name into the database, returns the new
         identifier of the song.
@@ -207,7 +207,7 @@ class SQLADatabase(Database):
         if song is not None:
             return song.id
         else:
-            song = Song(name=song_name, file_sha1=sha1_hash)
+            song = Song(name=song_name, file_sha1=file_hash)
             session.add(song)
             session.commit()
             return song.id
