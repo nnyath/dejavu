@@ -1,6 +1,7 @@
 from __future__ import absolute_import
 
 from itertools import izip_longest
+import sqlite3
 
 from sqlalchemy import Table, Column, MetaData, Binary, Integer, Text, Boolean, ForeignKey, UniqueConstraint, create_engine
 from sqlalchemy.sql import select, func
@@ -23,20 +24,38 @@ class SQLACDatabase(Database):
     class HexedBinary(Binary):
         """
         A Binary column that automatically hexes/unhexes when read/written.
+
+        SQLite doesn't normally allow non-Unicode strings, even for values
+        destined to BLOB columns, so we have to put those in a buffer
+        first and cast them back as str when retrieving.
         """
         @staticmethod
         def _hextobin(val):
-            return bytearray(val.decode("hex"))
+            return val.decode("hex")
+
+        @staticmethod
+        def _hextobin_sqlite(val):
+            return sqlite3.Binary(val.decode("hex"))
 
         @staticmethod
         def _bintohex(val):
             return val.encode("hex").upper()
 
+        @staticmethod
+        def _bintohex_sqlite(val):
+            return str(val).encode("hex").upper()
+
         def bind_processor(self, dialect):
-            return self._hextobin
+            if dialect.name == 'sqlite':
+                return self._hextobin_sqlite
+            else:
+                return self._hextobin
 
         def result_processor(self, dialect, coltype):
-            return self._bintohex
+            if dialect.name == 'sqlite':
+                return self._bintohex_sqlite
+            else:
+                return self._bintohex
 
     songs = Table(SONGS_TABLENAME, metadata,
                   Column(Database.FIELD_SONG_ID, Integer, primary_key=True),
@@ -147,6 +166,8 @@ class SQLACDatabase(Database):
 
         sid: Song identifier
         """
+        if sid is -1:
+            return None
         s = select([self.songs]).where(self.songs.c[SQLACDatabase.FIELD_SONG_ID] == sid)
         with self.Engine.connect() as c:
             r = c.execute(s)
@@ -160,7 +181,7 @@ class SQLACDatabase(Database):
            sid: Song identifier this fingerprint is off
         offset: The offset this hash is from
         """
-        i = self.fingerprints.insert().values(**{SQLACDatabase.FIELD_HASH: hash, SQLACDatabase.FIELD_SONG_ID: sid, SQLACDatabase.FIELD_OFFSET: offset})
+        i = self.fingerprints.insert().values(**{SQLACDatabase.FIELD_HASH: hash, SQLACDatabase.FIELD_SONG_ID: sid, SQLACDatabase.FIELD_OFFSET: int(offset)})
         with self.Engine.connect() as c:
             c.execute(i)
 
@@ -201,7 +222,8 @@ class SQLACDatabase(Database):
         values into the database.
         """
         with self.Engine.connect() as c:
-            c.execute(self.fingerprints.__table__.insert([{SQLACDatabase.FIELD_FINGERPRINTED:h[0],Database.FIELD_SONG_ID:sid,Database.FIELD_OFFSET:h[1]} for h in hashes]))
+            i = self.fingerprints.insert()
+            c.execute(i, [{SQLACDatabase.FIELD_HASH:h[0],Database.FIELD_SONG_ID:sid,Database.FIELD_OFFSET:int(h[1])} for h in hashes])
 
     def return_matches(self, hashes):
         """
