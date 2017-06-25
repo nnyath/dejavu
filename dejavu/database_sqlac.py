@@ -1,7 +1,11 @@
 from __future__ import absolute_import
 
 from itertools import izip_longest
-import sqlite3
+
+try:
+    import sqlite3
+except ImportError:
+    pass
 
 from sqlalchemy import Table, Column, MetaData, Binary, Integer, Text, Boolean, ForeignKey, UniqueConstraint, create_engine
 from sqlalchemy.sql import select, func
@@ -31,7 +35,7 @@ class SQLACDatabase(Database):
         """
         @staticmethod
         def _hextobin(val):
-            return val.decode("hex")
+            return memoryview(val.decode("hex"))
 
         @staticmethod
         def _hextobin_sqlite(val):
@@ -39,23 +43,16 @@ class SQLACDatabase(Database):
 
         @staticmethod
         def _bintohex(val):
-            return val.encode("hex").upper()
-
-        @staticmethod
-        def _bintohex_sqlite(val):
             return str(val).encode("hex").upper()
 
         def bind_processor(self, dialect):
-            if dialect.name == 'sqlite':
+            if dialect.name == "sqlite":
                 return self._hextobin_sqlite
             else:
                 return self._hextobin
 
         def result_processor(self, dialect, coltype):
-            if dialect.name == 'sqlite':
-                return self._bintohex_sqlite
-            else:
-                return self._bintohex
+            return self._bintohex
 
     songs = Table(SONGS_TABLENAME, metadata,
                   Column(Database.FIELD_SONG_ID, Integer, primary_key=True),
